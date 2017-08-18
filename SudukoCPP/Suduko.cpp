@@ -292,13 +292,13 @@ namespace Suduko {
 
     // Helper
 
-    Board loadFromFile(const std::string & filePath) {
+    std::shared_ptr<Board> loadFromFile(const std::string & filePath) {
         std::ifstream input(filePath);
         if (!input.is_open()) {
             throw std::invalid_argument(std::string("Could not open file: ") + filePath);
         }
 
-        Board board;
+        auto board = std::shared_ptr<Board>(new Board());
         std::string line;
         int rowNo = 0;
         while (std::getline(input, line) && rowNo < 9) {
@@ -307,7 +307,7 @@ namespace Suduko {
                     char c = line[colNo];
                     if (c >= '1' && c <= '9') {
                         int value = c - '0';
-                        board.setValue(rowNo, colNo, value);
+                        board->setValue(rowNo, colNo, value);
                     }
                 }
                 rowNo++;
@@ -316,5 +316,4 @@ namespace Suduko {
 
         return board;
     }
-
 };

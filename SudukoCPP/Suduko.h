@@ -55,16 +55,20 @@ namespace Suduko {
         const int col();
 
         // The box number of the cell [0-8].
-        // 
+        // The box numbers increase going left to right and then down each row.
         const int box();
 
+        // Get the possible values for the cell.
         const std::set<int>& possibilities();
 
+        // Remove a possible value from the cell.
         void removePossibility(int _value);
 
+        // Clear the cell back to unset.
         void clear();
     };
 
+    // Represetnation of a Suduko board.
     class Board {
     private:
         /**
@@ -132,6 +136,7 @@ namespace Suduko {
         }
     };
 
+    // Solver for a Suduko board.
     class Solver {
     private:
         typedef std::function<std::optional<std::shared_ptr<Board>>()> BoardFactory;
@@ -149,7 +154,8 @@ namespace Suduko {
         void simplify(Board & board);
     };
 
-    Board loadFromFile(const std::string & filePath);
+    // Loads a board from a file.
+    std::shared_ptr<Board> loadFromFile(const std::string & filePath);
 };
 
 #endif

@@ -9,11 +9,11 @@ int main(int argc, char ** argv) {
             return 1;
         }
 
-        Suduko::Board board = Suduko::loadFromFile(argv[1]);
-        Suduko::Solver solver(board);
+        auto board = Suduko::loadFromFile(argv[1]);
+        Suduko::Solver solver(*board);
 
         std::cout << "Original board: " << std::endl;
-        std::cout << board.display() << std::endl;
+        std::cout << board->display() << std::endl;
 
         while (true) {
             auto solved = solver.next();
