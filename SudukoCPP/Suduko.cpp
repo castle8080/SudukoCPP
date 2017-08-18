@@ -237,28 +237,32 @@ namespace Suduko {
                 else {
                     auto solveCell = getCellToSolve(*b);
                     if (solveCell.has_value()) {
-                        auto _solveCell = std::shared_ptr<Cell>(new Cell(*solveCell));
-
-                        std::vector<int> setValues(solveCell->possibilities().size());
-                        std::copy(solveCell->possibilities().begin(), solveCell->possibilities().end(), setValues.begin());
-                        std::shuffle(setValues.begin(), setValues.end(), generator);
-
-                        for (auto setValue : setValues) {
-                            boards.push([_solveCell, b, setValue]() {
-                                auto newBoard = std::shared_ptr<Board>(new Board(*b));
-                                if (newBoard->trySetValue(_solveCell->row(), _solveCell->col(), setValue)) {
-                                    return std::optional<std::shared_ptr<Board>>(newBoard);
-                                }
-                                else {
-                                    return std::optional<std::shared_ptr<Board>>();
-                                }
-                            });
-                        }
+                        pushSolutionAttempts(b, *solveCell);
                     }
                 }
             }
         }
         return std::optional<std::shared_ptr<Board>>();
+    }
+
+    void Solver::pushSolutionAttempts(std::shared_ptr<Board> board, Cell & solveCell) {
+        auto solveCellPtr = std::shared_ptr<Cell>(new Cell(solveCell));
+
+        std::vector<int> setValues(solveCellPtr->possibilities().size());
+        std::copy(solveCellPtr->possibilities().begin(), solveCellPtr->possibilities().end(), setValues.begin());
+        std::shuffle(setValues.begin(), setValues.end(), generator);
+
+        for (auto setValue : setValues) {
+            boards.push([solveCellPtr, board, setValue]() {
+                auto newBoard = std::shared_ptr<Board>(new Board(*board));
+                if (newBoard->trySetValue(solveCellPtr->row(), solveCellPtr->col(), setValue)) {
+                    return std::optional<std::shared_ptr<Board>>(newBoard);
+                }
+                else {
+                    return std::optional<std::shared_ptr<Board>>();
+                }
+            });
+        }
     }
 
     std::optional<Cell> Solver::getCellToSolve(Board & board) {

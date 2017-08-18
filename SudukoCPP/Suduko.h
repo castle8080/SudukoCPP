@@ -152,6 +152,7 @@ namespace Suduko {
     private:
         std::optional<Cell> getCellToSolve(Board & board);
         void simplify(Board & board);
+        void pushSolutionAttempts(std::shared_ptr<Board> board, Cell & cell);
     };
 
     // Loads a board from a file.
