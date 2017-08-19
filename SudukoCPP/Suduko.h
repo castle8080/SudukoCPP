@@ -134,6 +134,26 @@ namespace Suduko {
                 }
             }
         }
+
+        template <typename Func>
+        void eachRelatedCell(int rowNo, int colNo, Func f) {
+            auto & tCell = cell(rowNo, colNo);
+            eachCellInRow(rowNo, [colNo, &f](auto & _cell) {
+                if (_cell.col() != colNo) {
+                    f(_cell);
+                }
+            });
+            eachCellInCol(colNo, [rowNo, &f](auto & _cell) {
+                if (_cell.row() != rowNo) {
+                    f(_cell);
+                }
+            });
+            eachCellInBox(tCell.box(), [rowNo, colNo, &f](auto & _cell) {
+                if (_cell.row() != rowNo && _cell.col() != colNo) {
+                    f(_cell);
+                }
+            });
+        }
     };
 
     // Solver for a Suduko board.

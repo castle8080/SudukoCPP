@@ -1,17 +1,17 @@
 #include "Suduko.h"
 
-#include <stdexcept>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <stack>
-#include <optional>
-#include <functional>
-#include <memory>
-#include <random>
 #include <algorithm>
 #include <chrono>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <random>
+#include <sstream>
+#include <stack>
+#include <stdexcept>
+#include <string>
 
 namespace Suduko {
 
@@ -94,6 +94,62 @@ namespace Suduko {
         return spCells;
     }
 
+    Cell& Board::cell(int rowNo, int colNo) {
+        return m_cells[rowNo][colNo];
+    }
+
+    void Board::setValue(int rowNo, int colNo, int value) {
+        if (!trySetValue(rowNo, colNo, value)) {
+            throw std::invalid_argument("Could not set value for cell.");
+        }
+    }
+
+    bool Board::trySetValue(int rowNo, int colNo, int value) {
+        auto & tCell = cell(rowNo, colNo);
+        if (!tCell.trySet(value)) {
+            return false;
+        }
+        eachRelatedCell(rowNo, colNo, [value](auto & _cell) {
+            _cell.removePossibility(value);
+        });
+        return true;
+    }
+
+    bool Board::isSolved() {
+        int setCount = 0;
+        eachCell([&setCount](auto _cell) {
+            if (_cell.isSet()) {
+                setCount++;
+            }
+        });
+        return setCount == 81;
+    }
+
+    std::string Board::display() {
+        std::stringstream str;
+
+        for (int rowNo = 0; rowNo < 9; rowNo++) {
+            if (rowNo == 3 || rowNo == 6) {
+                str << "---+---+---" << std::endl;
+            }
+            for (int colNo = 0; colNo < 9; colNo++) {
+                if (colNo == 3 || colNo == 6) {
+                    str << "|";
+                }
+                auto _cell = cell(rowNo, colNo);
+                if (!_cell.isSet()) {
+                    str << " ";
+                }
+                else {
+                    str << _cell.value();
+                }
+            }
+            str << std::endl;
+        }
+
+        return str.str();
+    }
+
     std::string Board::debugDisplay() {
         std::stringstream content;
 
@@ -146,75 +202,6 @@ namespace Suduko {
         }
 
         return content.str();
-    }
-
-    std::string Board::display() {
-        std::stringstream str;
-
-        for (int rowNo = 0; rowNo < 9; rowNo++) {
-            if (rowNo == 3 || rowNo == 6) {
-                str << "---+---+---" << std::endl;
-            }
-            for (int colNo = 0; colNo < 9; colNo++) {
-                if (colNo == 3 || colNo == 6) {
-                    str << "|";
-                }
-                auto _cell = cell(rowNo, colNo);
-                if (!_cell.isSet()) {
-                    str << " ";
-                }
-                else {
-                    str << _cell.value();
-                }
-            }
-            str << std::endl;
-        }
-
-        return str.str();
-    }
-
-    Cell& Board::cell(int rowNo, int colNo) {
-        return m_cells[rowNo][colNo];
-    }
-
-    void Board::setValue(int rowNo, int colNo, int value) {
-        if (!trySetValue(rowNo, colNo, value)) {
-            throw std::invalid_argument("Could not set value for cell.");
-        }
-    }
-
-
-    bool Board::trySetValue(int rowNo, int colNo, int value) {
-        auto & tCell = cell(rowNo, colNo);
-        if (!tCell.trySet(value)) {
-            return false;
-        }
-        eachCellInRow(rowNo, [colNo, value](auto & _cell) {
-            if (_cell.col() != colNo) {
-                _cell.removePossibility(value);
-            }
-        });
-        eachCellInCol(colNo, [rowNo, value](auto & _cell) {
-            if (_cell.row() != rowNo) {
-                _cell.removePossibility(value);
-            }
-        });
-        eachCellInBox(tCell.box(), [rowNo, colNo, value](auto & _cell) {
-            if (_cell.row() != rowNo && _cell.col() != colNo) {
-                _cell.removePossibility(value);
-            }
-        });
-        return true;
-    }
-
-    bool Board::isSolved() {
-        int setCount = 0;
-        eachCell([&setCount](auto _cell) {
-            if (_cell.isSet()) {
-                setCount++;
-            }
-        });
-        return setCount == 81;
     }
 
     Solver::Solver(Board & board) :
