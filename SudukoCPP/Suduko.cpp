@@ -15,6 +15,10 @@
 
 namespace Suduko {
 
+    //========================================================================
+    // Class: Cell
+    //========================================================================
+
     Cell::Cell(int _row, int _col) :
         m_row(_row),
         m_col(_col),
@@ -33,6 +37,11 @@ namespace Suduko {
         m_value = _value;
         m_possibilities.empty();
         return true;
+    }
+
+    void Cell::unset() {
+        m_value = 0;
+        m_possibilities = std::set<int>{ 1,2,3,4,5,6,7,8,9 };
     }
 
     const bool Cell::isSet() {
@@ -60,6 +69,12 @@ namespace Suduko {
         m_possibilities.erase(_value);
     }
 
+    void Cell::addPossibility(int _value) {
+        if (!isSet()) {
+            m_possibilities.insert(_value);
+        }
+    }
+
     const std::set<int>& Cell::possibilities() {
         return m_possibilities;
     }
@@ -68,6 +83,10 @@ namespace Suduko {
         m_value = 0;
         m_possibilities = std::set<int>{ 1,2,3,4,5,6,7,8,9 };
     }
+
+    //========================================================================
+    // Class: Board
+    //========================================================================
 
     Board::Board() :
         m_cells(9)
@@ -115,14 +134,44 @@ namespace Suduko {
         return true;
     }
 
-    bool Board::isSolved() {
+    void Board::unset(int rowNo, int colNo) {
+        auto & _cell = cell(rowNo, colNo);
+        if (!_cell.isSet()) {
+            return;
+        }
+        _cell.unset();
+        recomputePossibilities(rowNo, colNo);
+
+        eachRelatedCell(rowNo, colNo, [this, rowNo, colNo](auto & relatedCell) {
+            if (!relatedCell.isSet()) {
+                recomputePossibilities(rowNo, colNo);
+            }
+        });
+    }
+
+    void Board::recomputePossibilities(int rowNo, int colNo) {
+        auto & _cell = cell(rowNo, colNo);
+        if (!_cell.isSet()) {
+            eachRelatedCell(rowNo, colNo, [&_cell](auto & relatedCell) {
+                if (relatedCell.isSet()) {
+                    _cell.removePossibility(relatedCell.value());
+                }
+            });
+        }
+    }
+
+    int Board::cellSetCount() {
         int setCount = 0;
         eachCell([&setCount](auto _cell) {
             if (_cell.isSet()) {
                 setCount++;
             }
         });
-        return setCount == 81;
+        return setCount;
+    }
+
+    bool Board::isSolved() {
+        return cellSetCount() == 81;
     }
 
     std::string Board::display() {
@@ -204,6 +253,10 @@ namespace Suduko {
         return content.str();
     }
 
+    //========================================================================
+    // Class: Solver
+    //========================================================================
+
     Solver::Solver(Board & board) :
         generator(std::chrono::system_clock::now().time_since_epoch().count())
     {
@@ -281,7 +334,98 @@ namespace Suduko {
         }
     }
 
-    // Helper
+    //========================================================================
+    // Class: Generator
+    //========================================================================
+
+    Generator::Generator() :
+        generator(std::chrono::system_clock::now().time_since_epoch().count())
+    {
+        Board empty;
+        Solver solver(empty);
+        auto solution = solver.next();
+        if (!solution.has_value()) {
+            throw std::exception("Could not generate a new Suduko board.");
+        }
+        boards.push([solution]() {
+            return std::optional<std::shared_ptr<Board>>(solution);
+        });
+    }
+
+    std::optional<std::shared_ptr<Board>> Generator::generate() {
+        while (!boards.empty()) {
+            auto boardOpt = boards.top()();
+            boards.pop();
+            if (boardOpt.has_value()) {
+                auto board = *boardOpt;
+                if (hasSingleSolution(board)) {
+                    pushNextRemovals(board);
+                    return std::optional<std::shared_ptr<Board>>(board);
+                }
+                else {
+                    std::cout << "Debug board:------" << std::endl;
+                    std::cout << board->debugDisplay() << std::endl;
+                }
+                // else a bad board!
+            }
+        }
+        return std::optional<std::shared_ptr<Board>>();
+    }
+
+    std::optional<std::shared_ptr<Board>> Generator::generate(int setSize) {
+        while (true) {
+            auto boardOpt = generate();
+            if (boardOpt.has_value()) {
+                auto board = *boardOpt;
+                if (board->cellSetCount() == setSize) {
+                    return std::optional<std::shared_ptr<Board>>(board);
+                }
+            }
+            else {
+                break;
+            }
+        }
+        return std::optional<std::shared_ptr<Board>>();
+    }
+
+    void Generator::pushNextRemovals(std::shared_ptr<Board> board) {
+        std::vector<std::function<std::optional<std::shared_ptr<Board>>()>> removalOps;
+
+        board->eachCell([&removalOps, &board](auto & cell) {
+            if (cell.isSet()) {
+                int rowNo = cell.row();
+                int colNo = cell.col();
+                removalOps.push_back([rowNo, colNo, board]() {
+                    return applyRemoval(rowNo, colNo, board);
+                });
+            }
+        });
+
+        std::shuffle(removalOps.begin(), removalOps.end(), generator);
+        for (auto & op : removalOps) {
+            boards.push(op);
+        }
+    }
+
+    std::optional<std::shared_ptr<Board>> applyRemoval(int rowNo, int colNo, std::shared_ptr<Board> board) {
+        auto newBoard = std::shared_ptr<Board>(new Board(*board));
+        newBoard->unset(rowNo, colNo);
+        return std::optional<std::shared_ptr<Board>>(newBoard);
+    }
+
+    bool Generator::hasSingleSolution(std::shared_ptr<Board> board) {
+        Solver solver(*board);
+        auto sol1 = solver.next();
+        if (!sol1.has_value()) {
+            return false;
+        }
+        auto sol2 = solver.next();
+        return !sol2.has_value();
+    }
+
+    //========================================================================
+    // Standalone Functions
+    //========================================================================
 
     std::shared_ptr<Board> loadFromFile(const std::string & filePath) {
         std::ifstream input(filePath);

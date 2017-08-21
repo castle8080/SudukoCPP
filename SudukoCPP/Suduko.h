@@ -15,9 +15,15 @@ Library for solving and creating Suduko puzzles.
 
 namespace Suduko {
 
+    // Pre-declare types.
+    class Board;
+
     // Alias used for the 2-d matrix of a Suduko board.
     template <typename T>
     using Matrix = std::vector<std::vector<T>>;
+
+    // Function which generates boards.
+    typedef std::function<std::optional<std::shared_ptr<Board>>()> BoardFactory;
 
     // Represents a Cell on a Suduko board.
     class Cell {
@@ -48,6 +54,8 @@ namespace Suduko {
         // Returns if the value could be set or not.
         bool trySet(int _value);
 
+        void unset();
+
         const int value();
 
         const int row();
@@ -63,6 +71,8 @@ namespace Suduko {
 
         // Remove a possible value from the cell.
         void removePossibility(int _value);
+
+        void addPossibility(int _value);
 
         // Clear the cell back to unset.
         void clear();
@@ -95,7 +105,11 @@ namespace Suduko {
 
         bool trySetValue(int rowNo, int colNo, int value);
 
+        void unset(int rowNo, int colNo);
+
         std::vector<Cell> getCellsWithSinglePossibility();
+
+        int cellSetCount();
 
         bool isSolved();
 
@@ -154,13 +168,13 @@ namespace Suduko {
                 }
             });
         }
+    private:
+        void recomputePossibilities(int rowNo, int colNo);
     };
 
     // Solver for a Suduko board.
     class Solver {
     private:
-        typedef std::function<std::optional<std::shared_ptr<Board>>()> BoardFactory;
-
         std::stack<BoardFactory> boards;
         std::default_random_engine generator;
 
@@ -173,6 +187,24 @@ namespace Suduko {
         std::optional<Cell> getCellToSolve(Board & board);
         void simplify(Board & board);
         void pushSolutionAttempts(std::shared_ptr<Board> board, Cell & cell);
+    };
+
+    class Generator {
+    private:
+        std::stack<BoardFactory> boards;
+        std::default_random_engine generator;
+
+    public:
+        Generator();
+
+        std::optional<std::shared_ptr<Board>> generate();
+
+        std::optional<std::shared_ptr<Board>> generate(int setSize);
+
+    private:
+        void pushNextRemovals(std::shared_ptr<Board> board);
+
+        bool Generator::hasSingleSolution(std::shared_ptr<Board> board);
     };
 
     // Loads a board from a file.
