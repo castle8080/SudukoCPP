@@ -359,12 +359,9 @@ namespace Suduko {
             if (boardOpt.has_value()) {
                 auto board = *boardOpt;
                 if (hasSingleSolution(board)) {
+                    std::cout << "Example board: (" << board->cellSetCount() << ")" << std::endl << board->display() << std::endl;
                     pushNextRemovals(board);
                     return std::optional<std::shared_ptr<Board>>(board);
-                }
-                else {
-                    std::cout << "Debug board:------" << std::endl;
-                    std::cout << board->debugDisplay() << std::endl;
                 }
                 // else a bad board!
             }
@@ -408,8 +405,13 @@ namespace Suduko {
     }
 
     std::optional<std::shared_ptr<Board>> applyRemoval(int rowNo, int colNo, std::shared_ptr<Board> board) {
-        auto newBoard = std::shared_ptr<Board>(new Board(*board));
-        newBoard->unset(rowNo, colNo);
+        auto newBoard = std::shared_ptr<Board>(new Board());
+        board->eachCell([newBoard, rowNo, colNo](auto & _cell) {
+            if (_cell.isSet() && !(_cell.row() == rowNo && _cell.col() == colNo)) {
+                newBoard->setValue(_cell.row(), _cell.col(), _cell.value());
+            }
+        });
+        //newBoard->unset(rowNo, colNo);
         return std::optional<std::shared_ptr<Board>>(newBoard);
     }
 
@@ -437,6 +439,10 @@ namespace Suduko {
         std::string line;
         int rowNo = 0;
         while (std::getline(input, line) && rowNo < 9) {
+            // Get rid of bogus characters.
+            line.erase(std::remove_if(line.begin(), line.end(), [] (auto c) {
+                return c != ' ' && (c < '1' || c > '9');
+            }), line.end());
             if (line.length() > 0) {
                 for (int colNo = 0, len = line.length(); colNo < len && colNo < 9; colNo++) {
                     char c = line[colNo];
@@ -448,7 +454,6 @@ namespace Suduko {
                 rowNo++;
             }
         }
-
         return board;
     }
 };
