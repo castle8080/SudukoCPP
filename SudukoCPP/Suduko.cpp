@@ -306,6 +306,7 @@ namespace Suduko {
         }
         if (setValues.size() > 0) {
             std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
+            //std::cout << board->debugDisplay() << std::endl;
         }
     }
 
@@ -323,19 +324,47 @@ namespace Suduko {
 
     void Solver::simplify(Board & board) {
         while (true) {
-            auto spCells = board.getCellsWithSinglePossibility();
-            for (auto spCell : spCells) {
-                int value = *spCell.possibilities().begin();
-
-                if (!board.trySetValue(spCell.row(), spCell.col(), value)) {
-                    // Invalid board!
-                    return;
-                }
-            }
-            if (spCells.size() == 0) {
+            switch (runSimplificationRules(board)) {
+            case Solver::Invalid:
+                return;
+            case Solver::NoAction:
+                return;
+            case Solver::Updated:
                 break;
             }
         }
+    }
+
+    Solver::RuleResult Solver::runSimplificationRules(Board & board) {
+        // TODO: make this a constant.
+        std::vector<Solver::Rule> rules{
+            &Solver::simplificationRuleSinglePossibility
+        };
+        for (auto rule : rules) {
+            switch ((this->*rule)(board)) {
+            case Solver::Invalid:
+                return Solver::Invalid;
+            case Solver::Updated:
+                // start while loop over.
+                return Solver::Updated;
+            case Solver::NoAction:
+                // continue rules
+                break;
+            }
+        }
+        // No updates made this round.
+        return Solver::NoAction;
+    }
+
+    Solver::RuleResult Solver::simplificationRuleSinglePossibility(Board & board) {
+        auto spCells = board.getCellsWithSinglePossibility();
+        for (auto spCell : spCells) {
+            int value = *spCell.possibilities().begin();
+            if (!board.trySetValue(spCell.row(), spCell.col(), value)) {
+                return Solver::Invalid;
+            }
+        }
+        return (spCells.size() == 0) ? Solver::NoAction : Solver::Updated;
     }
 
     //========================================================================

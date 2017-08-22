@@ -175,6 +175,9 @@ namespace Suduko {
     // Solver for a Suduko board.
     class Solver {
     private:
+        enum RuleResult { Updated, NoAction, Invalid };
+        typedef Solver::RuleResult(Solver::*Rule)(Board &);
+
         std::stack<BoardFactory> boards;
         std::default_random_engine generator;
 
@@ -186,6 +189,8 @@ namespace Suduko {
     private:
         std::optional<Cell> getCellToSolve(Board & board);
         void simplify(Board & board);
+        RuleResult runSimplificationRules(Board & board);
+        RuleResult simplificationRuleSinglePossibility(Board & board);
         void pushSolutionAttempts(std::shared_ptr<Board> board, Cell & cell);
     };
 
