@@ -1,7 +1,9 @@
 #include "Suduko.h"
+
+#include <chrono>
+#include <cstring>
 #include <iostream>
 #include <string>
-#include <cstring>
 
 void help(const char * exeName) {
     // TODO: show help
@@ -15,11 +17,16 @@ void solve(std::string sudukoFile) {
     std::cout << board->display() << std::endl;
 
     while (true) {
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
         auto solved = solver.next();
+        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> time_span = t2 - t1;
         if (solved.has_value()) {
-            std::cout << "Solved: " << std::endl << (*solved)->display() << std::endl;
+            std::cout << "Solved in " << time_span.count() << " ms." << std::endl;
+            std::cout << (*solved)->display() << std::endl;
         }
         else {
+            std::cout << "No further sollutions: " << time_span.count() << " ms." << std::endl;
             break;
         }
     }

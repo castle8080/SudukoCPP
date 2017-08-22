@@ -135,6 +135,7 @@ namespace Suduko {
     }
 
     void Board::unset(int rowNo, int colNo) {
+        // TODO: There seems to be some bugs in this method or one of the methods it calls.
         auto & _cell = cell(rowNo, colNo);
         if (!_cell.isSet()) {
             return;
@@ -303,6 +304,9 @@ namespace Suduko {
                 }
             });
         }
+        if (setValues.size() > 0) {
+            std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
+        }
     }
 
     std::optional<Cell> Solver::getCellToSolve(Board & board) {
@@ -358,12 +362,15 @@ namespace Suduko {
             boards.pop();
             if (boardOpt.has_value()) {
                 auto board = *boardOpt;
+                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
                 if (hasSingleSolution(board)) {
-                    std::cout << "Example board: (" << board->cellSetCount() << ")" << std::endl << board->display() << std::endl;
+                    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> time_span = t2 - t1;
+                    std::cout << "Example board: (" << board->cellSetCount() << ")" << " check in " << time_span.count() << " ms." << std::endl;
+                    std::cout << board->display() << std::endl;
                     pushNextRemovals(board);
                     return std::optional<std::shared_ptr<Board>>(board);
                 }
-                // else a bad board!
             }
         }
         return std::optional<std::shared_ptr<Board>>();
