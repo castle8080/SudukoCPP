@@ -5,6 +5,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <random>
@@ -12,6 +13,7 @@
 #include <stack>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 namespace Suduko {
 
@@ -305,7 +307,7 @@ namespace Suduko {
             });
         }
         if (setValues.size() > 0) {
-            std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
+            //std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
             //std::cout << board->debugDisplay() << std::endl;
         }
     }
@@ -338,7 +340,8 @@ namespace Suduko {
     Solver::RuleResult Solver::runSimplificationRules(Board & board) {
         // TODO: make this a constant.
         std::vector<Solver::Rule> rules{
-            &Solver::simplificationRuleSinglePossibility
+            &Solver::simplificationRuleSinglePossibility,
+            &Solver::simplifcationRuleOnlyPossibility
         };
         for (auto rule : rules) {
             switch ((this->*rule)(board)) {
@@ -365,6 +368,48 @@ namespace Suduko {
             }
         }
         return (spCells.size() == 0) ? Solver::NoAction : Solver::Updated;
+    }
+
+    Solver::RuleResult Solver::simplifcationRuleOnlyPossibility(Board & board) {
+        enum Region { Row, Col, Box };
+        std::map<std::tuple<Region, int, int>, std::vector<std::shared_ptr<Cell>>> tracking;
+
+        board.eachCell([&tracking](Cell & cell) {
+            if (!cell.isSet()) {
+                std::vector<std::tuple<Region, int>> regions{ 
+                    std::tuple<Region, int>(Row, cell.row()),
+                    std::tuple<Region, int>(Col, cell.col()),
+                    std::tuple<Region, int>(Box, cell.box())
+                };
+                for (auto setValue : cell.possibilities()) {
+                    for (auto region : regions) {
+                        auto k = std::make_tuple(std::get<0>(region), std::get<1>(region), setValue);
+                        auto elemIter = tracking.find(k);
+                        if (elemIter == tracking.end()) {
+                            tracking[k] = std::vector<std::shared_ptr<Cell>>();
+                        }
+                        tracking[k].push_back(std::shared_ptr<Cell>(new Cell(cell)));
+                    }
+                }
+            }
+        });
+
+        int updateCount = 0;
+        for (auto & pair : tracking) {
+            if (pair.second.size() == 1) {
+                auto cell = pair.second[0];
+                auto setValue = std::get<2>(pair.first);
+
+                //std::cout << "Setting value for only possibility: row=" << cell->row() << " col=" << cell->col() << " value=" << setValue << std::endl;
+
+                if (!board.trySetValue(cell->row(), cell->col(), setValue)) {
+                    return Solver::Invalid;
+                }
+                updateCount++;
+            }
+        }
+
+        return (updateCount == 0) ? Solver::NoAction : Solver::Updated;
     }
 
     //========================================================================

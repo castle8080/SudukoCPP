@@ -191,6 +191,7 @@ namespace Suduko {
         void simplify(Board & board);
         RuleResult runSimplificationRules(Board & board);
         RuleResult simplificationRuleSinglePossibility(Board & board);
+        RuleResult simplifcationRuleOnlyPossibility(Board & board);
         void pushSolutionAttempts(std::shared_ptr<Board> board, Cell & cell);
     };
 
