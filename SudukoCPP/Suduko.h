@@ -66,6 +66,8 @@ namespace Suduko {
         // The box numbers increase going left to right and then down each row.
         const int box();
 
+        const int id();
+
         // Get the possible values for the cell.
         const std::set<int>& possibilities();
 
@@ -87,6 +89,8 @@ namespace Suduko {
         Matrix<Cell> m_cells;
 
     public:
+
+        enum Region { Row, Col, Box };
 
         /**
         * Construct a new board.
@@ -119,6 +123,21 @@ namespace Suduko {
                 for (auto & cell : row) {
                     f(cell);
                 }
+            }
+        }
+
+        template <typename Func>
+        void eachCellInRegion(Region region, int regionNum, Func f) {
+            switch (region) {
+            case Row:
+                eachCellInRow(regionNum, f);
+                break;
+            case Col:
+                eachCellInCol(regionNum, f);
+                break;
+            case Box:
+                eachCellInBox(regionNum, f);
+                break;
             }
         }
 
@@ -191,7 +210,8 @@ namespace Suduko {
         void simplify(Board & board);
         RuleResult runSimplificationRules(Board & board);
         RuleResult simplificationRuleSinglePossibility(Board & board);
-        RuleResult simplifcationRuleOnlyPossibility(Board & board);
+        RuleResult simplificationRuleOnlyPossibility(Board & board);
+        RuleResult simplificationRuleSharedPossibilities(Board & board);
         void pushSolutionAttempts(std::shared_ptr<Board> board, Cell & cell);
     };
 

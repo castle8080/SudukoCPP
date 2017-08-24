@@ -62,10 +62,13 @@ namespace Suduko {
         return m_row / 3 * 3 + m_col / 3;
     }
 
+    const int Cell::id() {
+        return m_row * 9 + m_col;
+    }
+
     const int Cell::value() {
         return m_value;
     }
-
 
     void Cell::removePossibility(int _value) {
         m_possibilities.erase(_value);
@@ -308,7 +311,6 @@ namespace Suduko {
         }
         if (setValues.size() > 0) {
             //std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
-            //std::cout << board->debugDisplay() << std::endl;
         }
     }
 
@@ -341,7 +343,8 @@ namespace Suduko {
         // TODO: make this a constant.
         std::vector<Solver::Rule> rules{
             &Solver::simplificationRuleSinglePossibility,
-            &Solver::simplifcationRuleOnlyPossibility
+            &Solver::simplificationRuleOnlyPossibility,
+            &Solver::simplificationRuleSharedPossibilities
         };
         for (auto rule : rules) {
             switch ((this->*rule)(board)) {
@@ -370,16 +373,15 @@ namespace Suduko {
         return (spCells.size() == 0) ? Solver::NoAction : Solver::Updated;
     }
 
-    Solver::RuleResult Solver::simplifcationRuleOnlyPossibility(Board & board) {
-        enum Region { Row, Col, Box };
-        std::map<std::tuple<Region, int, int>, std::vector<std::shared_ptr<Cell>>> tracking;
+    Solver::RuleResult Solver::simplificationRuleOnlyPossibility(Board & board) {
+        std::map<std::tuple<Board::Region, int, int>, std::vector<std::shared_ptr<Cell>>> tracking;
 
         board.eachCell([&tracking](Cell & cell) {
             if (!cell.isSet()) {
-                std::vector<std::tuple<Region, int>> regions{ 
-                    std::tuple<Region, int>(Row, cell.row()),
-                    std::tuple<Region, int>(Col, cell.col()),
-                    std::tuple<Region, int>(Box, cell.box())
+                std::vector<std::tuple<Board::Region, int>> regions{ 
+                    std::tuple<Board::Region, int>(Board::Row, cell.row()),
+                    std::tuple<Board::Region, int>(Board::Col, cell.col()),
+                    std::tuple<Board::Region, int>(Board::Box, cell.box())
                 };
                 for (auto setValue : cell.possibilities()) {
                     for (auto region : regions) {
@@ -399,13 +401,57 @@ namespace Suduko {
             if (pair.second.size() == 1) {
                 auto cell = pair.second[0];
                 auto setValue = std::get<2>(pair.first);
-
-                //std::cout << "Setting value for only possibility: row=" << cell->row() << " col=" << cell->col() << " value=" << setValue << std::endl;
-
                 if (!board.trySetValue(cell->row(), cell->col(), setValue)) {
                     return Solver::Invalid;
                 }
                 updateCount++;
+            }
+        }
+
+        return (updateCount == 0) ? Solver::NoAction : Solver::Updated;
+    }
+
+    Solver::RuleResult Solver::simplificationRuleSharedPossibilities(Board & board) {
+        std::map<std::tuple<Board::Region, int, std::set<int>>, std::set<int>> tracking;
+
+        board.eachCell([&tracking](Cell & cell) {
+            if (!cell.isSet()) {
+                std::vector<std::tuple<Board::Region, int>> regions{
+                    std::tuple<Board::Region, int>(Board::Row, cell.row()),
+                    std::tuple<Board::Region, int>(Board::Col, cell.col()),
+                    std::tuple<Board::Region, int>(Board::Box, cell.box())
+                };
+                for (auto & pair : regions) {
+                    auto key = std::make_tuple(
+                        std::get<0>(pair),
+                        std::get<1>(pair),
+                        cell.possibilities());
+
+                    auto iter = tracking.find(key);
+                    if (iter == tracking.end()) {
+                        tracking[key] = std::set<int>();
+                    }
+                    tracking[key].insert(cell.id());
+                }
+            }
+        });
+
+        int updateCount = 0;
+        for (auto & pair : tracking) {
+            auto region = std::get<0>(pair.first);
+            auto regionValue = std::get<1>(pair.first);
+
+            if (std::get<2>(pair.first).size() == pair.second.size()) {
+                board.eachCellInRegion(region, regionValue, [&board, &updateCount, &pair](Cell & cell) {
+                    if (!cell.isSet() && pair.second.find(cell.id()) == pair.second.end()) {
+                        for (auto pValue : std::get<2>(pair.first)) {
+                            if (cell.possibilities().find(pValue) != cell.possibilities().end()) {
+                                cell.removePossibility(pValue);
+                                updateCount++;
+                            }
+                        }
+                    }
+                });
             }
         }
 
@@ -440,8 +486,10 @@ namespace Suduko {
                 if (hasSingleSolution(board)) {
                     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
                     std::chrono::duration<double, std::milli> time_span = t2 - t1;
-                    std::cout << "Example board: (" << board->cellSetCount() << ")" << " check in " << time_span.count() << " ms." << std::endl;
-                    std::cout << board->display() << std::endl;
+                    if (time_span.count() >= 1.0) {
+                        std::cout << "Example board: (" << board->cellSetCount() << ")" << " check in " << time_span.count() << " ms." << std::endl;
+                        std::cout << board->display() << std::endl;
+                    }
                     pushNextRemovals(board);
                     return std::optional<std::shared_ptr<Board>>(board);
                 }
