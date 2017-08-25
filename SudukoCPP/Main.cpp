@@ -45,10 +45,6 @@ void generate(int setSize, int puzzleCount) {
     }
 }
 
-int mainX(void) {
-    solve("D:\\bryanc\\projects\\SudukoCPP\\puzzles\\p12.txt");
-}
-
 int main(int argc, char ** argv) {
     try {
         std::string action = "help";

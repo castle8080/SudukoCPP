@@ -344,6 +344,7 @@ namespace Suduko {
         std::vector<Solver::Rule> rules{
             &Solver::simplificationRuleSinglePossibility,
             &Solver::simplificationRuleOnlyPossibility,
+            &Solver::simplificationRuleBoxCheck,
             &Solver::simplificationRuleSharedPossibilities
         };
         for (auto rule : rules) {
@@ -458,6 +459,56 @@ namespace Suduko {
         return (updateCount == 0) ? Solver::NoAction : Solver::Updated;
     }
 
+    Solver::RuleResult Solver::simplificationRuleBoxCheck(Board & board) {
+        int updateCount = 0;
+
+        for (int boxNo = 0; boxNo < 9; boxNo++) {
+            std::unordered_map<int, std::set<int>> valRows;
+            std::unordered_map<int, std::set<int>> valCols;
+            board.eachCellInBox(boxNo, [&valRows, &valCols](auto & cell) {
+                if (!cell.isSet()) {
+                    for (auto pValue : cell.possibilities()) {
+                        if (valRows.find(pValue) == valRows.end()) {
+                            valRows[pValue] = std::set<int>();
+                        }
+                        if (valCols.find(pValue) == valCols.end()) {
+                            valCols[pValue] = std::set<int>();
+                        }
+                        valRows[pValue].insert(cell.row());
+                        valCols[pValue].insert(cell.col());
+                    }
+                }
+            });
+
+            for (auto & pair : valRows) {
+                if (pair.second.size() == 1) {
+                    board.eachCellInRow(*pair.second.begin(), [&updateCount, &pair, boxNo](Cell & cell) {
+                        if (!cell.isSet() && cell.box() != boxNo) {
+                            if (cell.possibilities().find(pair.first) != cell.possibilities().end()) {
+                                cell.removePossibility(pair.first);
+                                updateCount++;
+                            }
+                        }
+                    });
+                }
+            }
+            for (auto & pair : valCols) {
+                if (pair.second.size() == 1) {
+                    board.eachCellInCol(*pair.second.begin(), [&updateCount, &pair, boxNo](Cell & cell) {
+                        if (!cell.isSet() && cell.box() != boxNo) {
+                            if (cell.possibilities().find(pair.first) != cell.possibilities().end()) {
+                                cell.removePossibility(pair.first);
+                                updateCount++;
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        return (updateCount == 0) ? Solver::NoAction : Solver::Updated;
+    }
+
     //========================================================================
     // Class: Generator
     //========================================================================
@@ -490,6 +541,7 @@ namespace Suduko {
                         std::cout << "Example board: (" << board->cellSetCount() << ")" << " check in " << time_span.count() << " ms." << std::endl;
                         std::cout << board->display() << std::endl;
                     }
+                    // TODO: this is not efficient - it checks many duplicate boards.
                     pushNextRemovals(board);
                     return std::optional<std::shared_ptr<Board>>(board);
                 }
