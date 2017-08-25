@@ -32,11 +32,11 @@ void solve(std::string sudukoFile) {
     }
 }
 
-void generate(int setSize, int puzzleCount) {
+void generate(int setSize, int puzzleCount, int boardMaxTries) {
     int count = 0;
     while (count < puzzleCount) {
         Suduko::Generator generator;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < boardMaxTries; i++) {
             auto boardOpt = generator.generate();
             if (boardOpt.has_value()) {
                 auto board = *boardOpt;
@@ -55,6 +55,7 @@ int main(int argc, char ** argv) {
         std::string action = "help";
         int count = 1;
         int cellSet = 25;
+        int boardMaxTries = 1000;
         std::string solveFile = "";
 
         for (int i = 1; i < argc; i ++) {
@@ -87,7 +88,7 @@ int main(int argc, char ** argv) {
             help(argv[0]);
         }
         else if (action == "generate") {
-            generate(cellSet, count);
+            generate(cellSet, count, boardMaxTries);
         }
         else if (action == "solve") {
             solve(solveFile);

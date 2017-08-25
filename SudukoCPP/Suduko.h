@@ -25,7 +25,10 @@ namespace Suduko {
     // Function which generates boards.
     typedef std::function<std::optional<std::shared_ptr<Board>>()> BoardFactory;
 
-    // Represents a Cell on a Suduko board.
+    //========================================================================
+    // Class: Cell
+    //========================================================================
+
     class Cell {
     private:
         // The row number [0-8] for the cell.
@@ -80,7 +83,10 @@ namespace Suduko {
         void clear();
     };
 
-    // Represetnation of a Suduko board.
+    //========================================================================
+    // Class: Board
+    //========================================================================
+
     class Board {
     private:
         /**
@@ -191,7 +197,10 @@ namespace Suduko {
         void recomputePossibilities(int rowNo, int colNo);
     };
 
-    // Solver for a Suduko board.
+    //========================================================================
+    // Class: Solver
+    //========================================================================
+
     class Solver {
     private:
         enum RuleResult { Updated, NoAction, Invalid };
@@ -202,7 +211,6 @@ namespace Suduko {
 
     public:
         Solver(Board & board);
-
         std::optional<std::shared_ptr<Board>> next();
 
     private:
@@ -216,6 +224,10 @@ namespace Suduko {
         void pushSolutionAttempts(std::shared_ptr<Board> board, Cell & cell);
     };
 
+    //========================================================================
+    // Class: Generator
+    //========================================================================
+
     class Generator {
     private:
         std::vector<int> ids;
@@ -224,16 +236,15 @@ namespace Suduko {
 
     public:
         Generator();
-
         std::optional<std::shared_ptr<Board>> generate();
 
-        std::optional<std::shared_ptr<Board>> generate(int setSize);
-
     private:
-        void pushNextRemovals(std::shared_ptr<Board> board);
-
         bool Generator::hasSingleSolution(std::shared_ptr<Board> board);
     };
+
+    //========================================================================
+    // Class: Standalone Functions
+    //========================================================================
 
     // Loads a board from a file.
     std::shared_ptr<Board> loadFromFile(const std::string & filePath);

@@ -309,9 +309,9 @@ namespace Suduko {
                 }
             });
         }
-        if (setValues.size() > 0) {
-            //std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
-        }
+        //if (setValues.size() > 0) {
+        //    std::cout << "Pushed new solution search nodes: added=" << setValues.size() << " current search size=" << boards.size() << std::endl;
+        //}
     }
 
     std::optional<Cell> Solver::getCellToSolve(Board & board) {
@@ -558,22 +558,6 @@ namespace Suduko {
                 }
 
                 return std::optional<std::shared_ptr<Board>>(board);
-            }
-        }
-        return std::optional<std::shared_ptr<Board>>();
-    }
-
-    std::optional<std::shared_ptr<Board>> Generator::generate(int setSize) {
-        while (true) {
-            auto boardOpt = generate();
-            if (boardOpt.has_value()) {
-                auto board = *boardOpt;
-                if (board->cellSetCount() == setSize) {
-                    return std::optional<std::shared_ptr<Board>>(board);
-                }
-            }
-            else {
-                break;
             }
         }
         return std::optional<std::shared_ptr<Board>>();
