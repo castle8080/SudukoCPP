@@ -218,7 +218,8 @@ namespace Suduko {
 
     class Generator {
     private:
-        std::stack<BoardFactory> boards;
+        std::vector<int> ids;
+        std::stack<std::tuple<std::shared_ptr<Board>, int>> boards;
         std::default_random_engine generator;
 
     public:

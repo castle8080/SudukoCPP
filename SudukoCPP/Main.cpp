@@ -36,11 +36,16 @@ void generate(int setSize, int puzzleCount) {
     int count = 0;
     while (count < puzzleCount) {
         Suduko::Generator generator;
-        auto boardOpt = generator.generate(setSize);
-        if (boardOpt.has_value()) {
-            auto board = *boardOpt;
-            std::cout << board->display() << std::endl;
-            count++;
+        for (int i = 0; i < 1000; i++) {
+            auto boardOpt = generator.generate();
+            if (boardOpt.has_value()) {
+                auto board = *boardOpt;
+                if (board->cellSetCount() <= setSize) {
+                    std::cout << board->display() << std::endl;
+                    count++;
+                    break;
+                }
+            }
         }
     }
 }

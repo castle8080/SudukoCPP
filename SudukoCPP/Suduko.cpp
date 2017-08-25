@@ -522,29 +522,42 @@ namespace Suduko {
         if (!solution.has_value()) {
             throw std::exception("Could not generate a new Suduko board.");
         }
-        boards.push([solution]() {
-            return std::optional<std::shared_ptr<Board>>(solution);
-        });
+        for (int i = 0; i < 81; i++) {
+            ids.push_back(i);
+        }
+        std::shuffle(ids.begin(), ids.end(), generator);
+        boards.push(std::make_tuple(*solution, 0));
     }
 
     std::optional<std::shared_ptr<Board>> Generator::generate() {
         while (!boards.empty()) {
-            auto boardOpt = boards.top()();
+            auto boardAndIndex = boards.top();
             boards.pop();
-            if (boardOpt.has_value()) {
-                auto board = *boardOpt;
-                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-                if (hasSingleSolution(board)) {
-                    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double, std::milli> time_span = t2 - t1;
-                    if (time_span.count() >= 1.0) {
-                        std::cout << "Example board: (" << board->cellSetCount() << ")" << " check in " << time_span.count() << " ms." << std::endl;
-                        std::cout << board->display() << std::endl;
-                    }
-                    // TODO: this is not efficient - it checks many duplicate boards.
-                    pushNextRemovals(board);
-                    return std::optional<std::shared_ptr<Board>>(board);
+            auto board = std::get<0>(boardAndIndex);
+            int index = std::get<1>(boardAndIndex);
+
+            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+            if (hasSingleSolution(board)) {
+                std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> time_span = t2 - t1;
+                if (time_span.count() >= 1.0) {
+                    //std::cout << "Example board: (" << board->cellSetCount() << ")" << " check in " << time_span.count() << " ms." << std::endl;
+                    //std::cout << board->display() << std::endl;
                 }
+
+                if (index < ids.size()) {
+                    boards.push(std::make_tuple(board, index + 1));
+                    int cellId = ids[index];
+                    auto newBoard = std::shared_ptr<Board>(new Board());
+                    board->eachCell([&newBoard, cellId](auto & _cell) {
+                        if (_cell.isSet() && _cell.id() != cellId) {
+                            newBoard->setValue(_cell.row(), _cell.col(), _cell.value());
+                        }
+                    });
+                    boards.push(std::make_tuple(newBoard, index + 1));
+                }
+
+                return std::optional<std::shared_ptr<Board>>(board);
             }
         }
         return std::optional<std::shared_ptr<Board>>();
@@ -564,36 +577,6 @@ namespace Suduko {
             }
         }
         return std::optional<std::shared_ptr<Board>>();
-    }
-
-    void Generator::pushNextRemovals(std::shared_ptr<Board> board) {
-        std::vector<std::function<std::optional<std::shared_ptr<Board>>()>> removalOps;
-
-        board->eachCell([&removalOps, &board](auto & cell) {
-            if (cell.isSet()) {
-                int rowNo = cell.row();
-                int colNo = cell.col();
-                removalOps.push_back([rowNo, colNo, board]() {
-                    return applyRemoval(rowNo, colNo, board);
-                });
-            }
-        });
-
-        std::shuffle(removalOps.begin(), removalOps.end(), generator);
-        for (auto & op : removalOps) {
-            boards.push(op);
-        }
-    }
-
-    std::optional<std::shared_ptr<Board>> applyRemoval(int rowNo, int colNo, std::shared_ptr<Board> board) {
-        auto newBoard = std::shared_ptr<Board>(new Board());
-        board->eachCell([newBoard, rowNo, colNo](auto & _cell) {
-            if (_cell.isSet() && !(_cell.row() == rowNo && _cell.col() == colNo)) {
-                newBoard->setValue(_cell.row(), _cell.col(), _cell.value());
-            }
-        });
-        //newBoard->unset(rowNo, colNo);
-        return std::optional<std::shared_ptr<Board>>(newBoard);
     }
 
     bool Generator::hasSingleSolution(std::shared_ptr<Board> board) {
